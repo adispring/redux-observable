@@ -5,7 +5,9 @@ import { StateObservable } from './StateObservable';
 
 export function createEpicMiddleware(options = {}) {
   if (process.env.NODE_ENV !== 'production' && typeof options === 'function') {
-    throw new TypeError('Providing your root Epic to `createEpicMiddleware(rootEpic)` is no longer supported, instead use `epicMiddleware.run(rootEpic)`\n\nLearn more: https://redux-observable.js.org/MIGRATION.html#setting-up-the-middleware');
+    throw new TypeError(
+      'Providing your root Epic to `createEpicMiddleware(rootEpic)` is no longer supported, instead use `epicMiddleware.run(rootEpic)`\n\nLearn more: https://redux-observable.js.org/MIGRATION.html#setting-up-the-middleware'
+    );
   }
 
   const epic$ = new Subject();
@@ -14,26 +16,28 @@ export function createEpicMiddleware(options = {}) {
   const epicMiddleware = _store => {
     if (process.env.NODE_ENV !== 'production' && store) {
       // https://github.com/redux-observable/redux-observable/issues/389
-      require('./utils/console').warn('this middleware is already associated with a store. createEpicMiddleware should be called for every store.\n\nLearn more: https://goo.gl/2GQ7Da');
+      require('./utils/console').warn(
+        'this middleware is already associated with a store. createEpicMiddleware should be called for every store.\n\nLearn more: https://goo.gl/2GQ7Da'
+      );
     }
     store = _store;
-    const actionSubject$ = new Subject().pipe(
-      observeOn(queueScheduler)
-    );
-    const stateSubject$ = new Subject().pipe(
-      observeOn(queueScheduler)
-    );
+    const actionSubject$ = new Subject().pipe(observeOn(queueScheduler));
+    const stateSubject$ = new Subject().pipe(observeOn(queueScheduler));
     const action$ = new ActionsObservable(actionSubject$);
     const state$ = new StateObservable(stateSubject$, store.getState());
 
     const result$ = epic$.pipe(
       map(epic => {
-        const output$ = 'dependencies' in options
-          ? epic(action$, state$, options.dependencies)
-          : epic(action$, state$);
+        const output$ =
+          'dependencies' in options
+            ? epic(action$, state$, options.dependencies)
+            : epic(action$, state$);
 
         if (!output$) {
-          throw new TypeError(`Your root Epic "${epic.name || '<anonymous>'}" does not return a stream. Double check you\'re not missing a return statement!`);
+          throw new TypeError(
+            `Your root Epic "${epic.name ||
+              '<anonymous>'}" does not return a stream. Double check you\'re not missing a return statement!`
+          );
         }
 
         return output$;
@@ -67,8 +71,14 @@ export function createEpicMiddleware(options = {}) {
 
   epicMiddleware.run = rootEpic => {
     if (process.env.NODE_ENV !== 'production' && !store) {
-      require('./utils/console').warn('epicMiddleware.run(rootEpic) called before the middleware has been setup by redux. Provide the epicMiddleware instance to createStore() first.');
+      require('./utils/console').warn(
+        'epicMiddleware.run(rootEpic) called before the middleware has been setup by redux. Provide the epicMiddleware instance to createStore() first.'
+      );
     }
+    /* subject.next(rootEpic) 将 rootEpic 多播出去，
+       之前的 subject.map(epic => {}).subscribe(store.dispatch) 会接收到这里推送过去的 epic，
+       方便动态加载和热更新 epic
+     */
     epic$.next(rootEpic);
   };
 
